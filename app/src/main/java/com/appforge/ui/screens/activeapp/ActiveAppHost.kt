@@ -3,6 +3,7 @@ package com.appforge.ui.screens.activeapp
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Apps
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -25,8 +26,9 @@ fun ActiveAppHost(
             TopAppBar(
                 title = { Text(uiState.activeInstance?.name ?: "تطبيق") },
                 navigationIcon = {
+                    // زر صغير للعودة إلى مدير التطبيقات (تغيير التطبيق)
                     IconButton(onClick = onBackToManager) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "رجوع")
+                        Icon(Icons.Default.Apps, contentDescription = "تغيير التطبيق")
                     }
                 },
                 actions = {

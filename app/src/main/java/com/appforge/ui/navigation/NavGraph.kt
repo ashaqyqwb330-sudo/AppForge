@@ -8,6 +8,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.appforge.data.preferences.PreferencesManager
 import com.appforge.ui.screens.about.AboutScreen
 import com.appforge.ui.screens.activeapp.ActiveAppHost
 import com.appforge.ui.screens.activeapp.ActiveAppViewModel
@@ -17,16 +18,27 @@ import com.appforge.ui.screens.settings.SettingsScreen
 import com.appforge.ui.screens.splash.SplashScreen
 import com.appforge.ui.screens.tabledetail.TableDetailScreen
 import com.appforge.ui.screens.tabledetail.TableDetailViewModel
+import dagger.hilt.android.AndroidEntryPoint
+import javax.inject.Inject
 
 @Composable
-fun NavGraph(navController: NavHostController = rememberNavController()) {
+fun NavGraph(
+    navController: NavHostController = rememberNavController(),
+    preferencesManager: PreferencesManager
+) {
     NavHost(
         navController = navController,
         startDestination = Routes.Splash.route
     ) {
         composable(Routes.Splash.route) {
             SplashScreen(
-                onSplashFinished = {
+                preferencesManager = preferencesManager,
+                onNavigateToActiveApp = {
+                    navController.navigate(Routes.ActiveApp.route) {
+                        popUpTo(Routes.Splash.route) { inclusive = true }
+                    }
+                },
+                onNavigateToAppManager = {
                     navController.navigate(Routes.AppManager.route) {
                         popUpTo(Routes.Splash.route) { inclusive = true }
                     }
@@ -40,7 +52,7 @@ fun NavGraph(navController: NavHostController = rememberNavController()) {
                 viewModel = viewModel,
                 onAppActivated = {
                     navController.navigate(Routes.ActiveApp.route) {
-                        popUpTo(Routes.AppManager.route)
+                        popUpTo(Routes.AppManager.route) { inclusive = false }
                     }
                 },
                 onNavigateToSettings = {

@@ -23,10 +23,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.unit.dp
+import com.appforge.data.preferences.PreferencesManager
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.firstOrNull
 
 @Composable
-fun SplashScreen(onSplashFinished: () -> Unit) {
+fun SplashScreen(
+    preferencesManager: PreferencesManager,
+    onNavigateToActiveApp: () -> Unit,
+    onNavigateToAppManager: () -> Unit
+) {
     var startAnimation by remember { mutableStateOf(false) }
     val alphaAnim by animateFloatAsState(
         targetValue = if (startAnimation) 1f else 0f,
@@ -37,7 +43,13 @@ fun SplashScreen(onSplashFinished: () -> Unit) {
     LaunchedEffect(Unit) {
         startAnimation = true
         delay(2000)
-        onSplashFinished()
+        // التحقق من وجود تطبيق نشط محفوظ
+        val activeId = preferencesManager.activeAppId.firstOrNull()
+        if (activeId != null) {
+            onNavigateToActiveApp()
+        } else {
+            onNavigateToAppManager()
+        }
     }
 
     Box(
