@@ -75,7 +75,7 @@ fun SmartCell(
                 val date = sdf.parse(value)
                 if (date != null) {
                     val outputFormat = SimpleDateFormat("dd MMM yyyy", Locale("ar"))
-                    formattedDate = outputFormat.format(date)
+                    formattedDate = outputFormat.format(date) ?: value
                 }
             } catch (_: Exception) {}
             Row(verticalAlignment = Alignment.CenterVertically, modifier = modifier) {
