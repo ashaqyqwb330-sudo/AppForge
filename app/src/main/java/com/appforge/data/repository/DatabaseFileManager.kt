@@ -14,11 +14,6 @@ import javax.inject.Singleton
 class DatabaseFileManager @Inject constructor(
     @ApplicationContext private val context: Context
 ) {
-    /**
-     * Copies the selected database file to app-private storage
-     * and returns the absolute path of the copied file.
-     * This ensures the database remains accessible even if the original is deleted.
-     */
     suspend fun copyDbToInternal(uri: Uri, fileName: String): Result<String> = withContext(Dispatchers.IO) {
         try {
             val dbDir = File(context.filesDir, "databases")
@@ -27,7 +22,11 @@ class DatabaseFileManager @Inject constructor(
             val targetFile = File(dbDir, fileName)
             context.contentResolver.openInputStream(uri)?.use { inputStream ->
                 FileOutputStream(targetFile).use { outputStream ->
-                    inputStream.copyTo(outputStream)
+                    val buffer = ByteArray(8192)
+                    var bytesRead: Int
+                    while (inputStream.read(buffer).also { bytesRead = it } != -1) {
+                        outputStream.write(buffer, 0, bytesRead)
+                    }
                 }
             } ?: throw Exception("تعذر فتح الملف المصدر")
 
@@ -44,6 +43,4 @@ class DatabaseFileManager @Inject constructor(
             false
         }
     }
-
-    fun getDatabaseFile(filePath: String): File = File(filePath)
 }

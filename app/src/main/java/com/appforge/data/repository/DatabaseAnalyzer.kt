@@ -28,10 +28,15 @@ class DatabaseAnalyzer @Inject constructor(
 
     suspend fun analyzeDatabase(uri: Uri): Result<AnalysisResult> = withContext(Dispatchers.IO) {
         try {
+            // نسخ الملف أولاً (حتى لو تم تحليله لاحقاً، نضمن وجود نسخة)
             val tempFile = File(context.cacheDir, "temp_${System.currentTimeMillis()}.db")
             context.contentResolver.openInputStream(uri)?.use { input ->
                 tempFile.outputStream().use { output ->
-                    input.copyTo(output)
+                    val buffer = ByteArray(8192)
+                    var bytesRead: Int
+                    while (input.read(buffer).also { bytesRead = it } != -1) {
+                        output.write(buffer, 0, bytesRead)
+                    }
                 }
             } ?: throw Exception("تعذر فتح الملف")
 
@@ -73,7 +78,6 @@ class DatabaseAnalyzer @Inject constructor(
                     if (colName.equals("app_name", ignoreCase = true)) {
                         hasAppNameColumn = true
                     }
-
                     columns.add(ColumnInfo(colName, colType, isPk))
                 }
                 pragmaCursor.close()
@@ -101,9 +105,7 @@ class DatabaseAnalyzer @Inject constructor(
                         "SELECT * FROM `$tableName` LIMIT 5",
                         null
                     )
-                    val colIndices = columns.indices.associate { i ->
-                        columns[i].name to i
-                    }
+                    val colIndices = columns.indices.associate { i -> columns[i].name to i }
 
                     while (sampleCursor.moveToNext()) {
                         for (col in columns) {
@@ -131,16 +133,14 @@ class DatabaseAnalyzer @Inject constructor(
                 else -> Template.INTERACTIVE_GRID
             }
 
-            Result.success(
-                AnalysisResult(
-                    tables = tables,
-                    suggestedTemplate = suggestedTemplate,
-                    appNameSuggestion = appNameSuggestion,
-                    containsImages = containsImages,
-                    containsLongText = containsLongText,
-                    containsNumbers = containsNumbers
-                )
-            )
+            Result.success(AnalysisResult(
+                tables = tables,
+                suggestedTemplate = suggestedTemplate,
+                appNameSuggestion = appNameSuggestion,
+                containsImages = containsImages,
+                containsLongText = containsLongText,
+                containsNumbers = containsNumbers
+            ))
         } catch (e: Exception) {
             Result.failure(e)
         }
