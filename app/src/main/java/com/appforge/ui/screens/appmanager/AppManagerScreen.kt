@@ -37,7 +37,6 @@ fun AppManagerScreen(
         contract = ActivityResultContracts.OpenDocument()
     ) { uri: Uri? ->
         uri?.let {
-            // Get file name from URI
             val cursor = context.contentResolver.query(it, null, null, null, null)
             var fileName = "unknown.db"
             cursor?.use { c ->
@@ -88,12 +87,14 @@ fun AppManagerScreen(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center
                 ) {
-                    CircularProgressIndicator()
+                    // استبدال المؤشر الدائري بمؤشر خطي لتجنب المشكلة
+                    LinearProgressIndicator(
+                        modifier = Modifier.fillMaxWidth(0.6f)
+                    )
                     Spacer(modifier = Modifier.height(16.dp))
                     Text("جاري تحليل قاعدة البيانات...")
                 }
             } else if (uiState.instances.isEmpty()) {
-                // Empty state
                 EmptyStateView(
                     message = "لا توجد تطبيقات مضافة بعد.\nاضغط على + لفتح قاعدة بيانات جديدة.",
                     onAction = { filePickerLauncher.launch(arrayOf("application/octet-stream", "*/*")) }
@@ -117,7 +118,6 @@ fun AppManagerScreen(
                 }
             }
 
-            // Error snackbar
             uiState.error?.let { error ->
                 Snackbar(
                     modifier = Modifier
@@ -133,7 +133,6 @@ fun AppManagerScreen(
                 }
             }
 
-            // Add dialog
             if (uiState.showAddDialog) {
                 AddAppDialog(
                     suggestedName = uiState.suggestedName,
