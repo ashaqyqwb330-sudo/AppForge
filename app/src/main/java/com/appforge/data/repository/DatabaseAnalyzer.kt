@@ -1,8 +1,12 @@
 package com.appforge.data.repository
 
+import android.content.ContentValues
 import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import android.net.Uri
+import android.os.Build
+import android.os.Environment
+import android.provider.MediaStore
 import com.appforge.domain.model.ColumnInfo
 import com.appforge.domain.model.TableInfo
 import com.appforge.domain.model.Template
@@ -10,6 +14,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.io.FileOutputStream
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -17,6 +22,36 @@ import javax.inject.Singleton
 class DatabaseAnalyzer @Inject constructor(
     @ApplicationContext private val context: Context
 ) {
+    private fun writeDebugLog(message: String) {
+        try {
+            val log = "[${System.currentTimeMillis()}] $message\n"
+            val filename = "appforge_debug.log"
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                val contentValues = ContentValues().apply {
+                    put(MediaStore.Downloads.DISPLAY_NAME, filename)
+                    put(MediaStore.Downloads.MIME_TYPE, "text/plain")
+                }
+                val uri = context.contentResolver.insert(
+                    MediaStore.Downloads.EXTERNAL_CONTENT_URI,
+                    contentValues
+                )
+                uri?.let {
+                    context.contentResolver.openOutputStream(it, "wa")?.use { os ->
+                        os.write(log.toByteArray())
+                    }
+                }
+            } else {
+                val downloadsDir = Environment.getExternalStoragePublicDirectory(
+                    Environment.DIRECTORY_DOWNLOADS
+                )
+                val file = File(downloadsDir, filename)
+                FileOutputStream(file, true).use { fos ->
+                    fos.write(log.toByteArray())
+                }
+            }
+        } catch (_: Exception) {}
+    }
+
     data class AnalysisResult(
         val tables: List<TableInfo>,
         val suggestedTemplate: Template,
@@ -28,7 +63,7 @@ class DatabaseAnalyzer @Inject constructor(
 
     suspend fun analyzeDatabase(uri: Uri): Result<AnalysisResult> = withContext(Dispatchers.IO) {
         try {
-            // نسخ الملف أولاً (حتى لو تم تحليله لاحقاً، نضمن وجود نسخة)
+            writeDebugLog("بدء تحليل قاعدة البيانات...")
             val tempFile = File(context.cacheDir, "temp_${System.currentTimeMillis()}.db")
             context.contentResolver.openInputStream(uri)?.use { input ->
                 tempFile.outputStream().use { output ->
@@ -39,12 +74,14 @@ class DatabaseAnalyzer @Inject constructor(
                     }
                 }
             } ?: throw Exception("تعذر فتح الملف")
+            writeDebugLog("تم نسخ الملف المؤقت إلى ${tempFile.absolutePath}")
 
             val db = SQLiteDatabase.openDatabase(
                 tempFile.absolutePath,
                 null,
                 SQLiteDatabase.OPEN_READONLY
             )
+            writeDebugLog("تم فتح قاعدة البيانات")
 
             val tables = mutableListOf<TableInfo>()
             var containsImages = false
@@ -55,17 +92,18 @@ class DatabaseAnalyzer @Inject constructor(
                 "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE 'android_%'",
                 null
             )
-
             val tableNames = mutableListOf<String>()
             while (cursor.moveToNext()) {
                 tableNames.add(cursor.getString(0))
             }
             cursor.close()
+            writeDebugLog("عدد الجداول: ${tableNames.size}")
 
             val tablesToProcess = if (tableNames.size > 12) tableNames.take(12) else tableNames
             var appNameSuggestion: String? = null
 
             for (tableName in tablesToProcess) {
+                writeDebugLog("معالجة جدول: $tableName")
                 val pragmaCursor = db.rawQuery("PRAGMA table_info(`$tableName`)", null)
                 val columns = mutableListOf<ColumnInfo>()
                 var hasAppNameColumn = false
@@ -74,50 +112,20 @@ class DatabaseAnalyzer @Inject constructor(
                     val colName = pragmaCursor.getString(pragmaCursor.getColumnIndexOrThrow("name"))
                     val colType = pragmaCursor.getString(pragmaCursor.getColumnIndexOrThrow("type"))
                     val isPk = pragmaCursor.getInt(pragmaCursor.getColumnIndexOrThrow("pk")) > 0
-
-                    if (colName.equals("app_name", ignoreCase = true)) {
-                        hasAppNameColumn = true
-                    }
+                    if (colName.equals("app_name", ignoreCase = true)) hasAppNameColumn = true
                     columns.add(ColumnInfo(colName, colType, isPk))
                 }
                 pragmaCursor.close()
 
                 val countCursor = db.rawQuery("SELECT COUNT(*) FROM `$tableName`", null)
                 var rowCount = 0
-                if (countCursor.moveToFirst()) {
-                    rowCount = countCursor.getInt(0)
-                }
+                if (countCursor.moveToFirst()) rowCount = countCursor.getInt(0)
                 countCursor.close()
 
                 if (rowCount > 0 && hasAppNameColumn) {
-                    val nameCursor = db.rawQuery(
-                        "SELECT app_name FROM `$tableName` LIMIT 1",
-                        null
-                    )
-                    if (nameCursor.moveToFirst()) {
-                        appNameSuggestion = nameCursor.getString(0)
-                    }
+                    val nameCursor = db.rawQuery("SELECT app_name FROM `$tableName` LIMIT 1", null)
+                    if (nameCursor.moveToFirst()) appNameSuggestion = nameCursor.getString(0)
                     nameCursor.close()
-                }
-
-                if (rowCount > 0) {
-                    val sampleCursor = db.rawQuery(
-                        "SELECT * FROM `$tableName` LIMIT 5",
-                        null
-                    )
-                    val colIndices = columns.indices.associate { i -> columns[i].name to i }
-
-                    while (sampleCursor.moveToNext()) {
-                        for (col in columns) {
-                            val value = sampleCursor.getString(colIndices[col.name]!!)
-                            when {
-                                col.type.uppercase().contains("BLOB") -> containsImages = true
-                                value != null && value.length > 200 -> containsLongText = true
-                                value != null && value.toDoubleOrNull() != null -> containsNumbers = true
-                            }
-                        }
-                    }
-                    sampleCursor.close()
                 }
 
                 tables.add(TableInfo(tableName, columns, rowCount))
@@ -125,6 +133,7 @@ class DatabaseAnalyzer @Inject constructor(
 
             db.close()
             tempFile.delete()
+            writeDebugLog("اكتمل التحليل بنجاح، عدد الجداول المُعالجة: ${tables.size}")
 
             val suggestedTemplate = when {
                 containsImages -> Template.ELEGANT_GALLERY
@@ -142,6 +151,7 @@ class DatabaseAnalyzer @Inject constructor(
                 containsNumbers = containsNumbers
             ))
         } catch (e: Exception) {
+            writeDebugLog("فشل التحليل: ${e.message}")
             Result.failure(e)
         }
     }
