@@ -28,7 +28,6 @@ class DatabaseAnalyzer @Inject constructor(
 
     suspend fun analyzeDatabase(uri: Uri): Result<AnalysisResult> = withContext(Dispatchers.IO) {
         try {
-            // Copy to temp file to open with SQLiteDatabase
             val tempFile = File(context.cacheDir, "temp_${System.currentTimeMillis()}.db")
             context.contentResolver.openInputStream(uri)?.use { input ->
                 tempFile.outputStream().use { output ->
@@ -47,7 +46,6 @@ class DatabaseAnalyzer @Inject constructor(
             var containsLongText = false
             var containsNumbers = false
 
-            // Query sqlite_master for tables
             val cursor = db.rawQuery(
                 "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE 'android_%'",
                 null
@@ -59,13 +57,10 @@ class DatabaseAnalyzer @Inject constructor(
             }
             cursor.close()
 
-            // Limit to first 12 tables for performance, but analyze all for suggestions
             val tablesToProcess = if (tableNames.size > 12) tableNames.take(12) else tableNames
-
             var appNameSuggestion: String? = null
 
             for (tableName in tablesToProcess) {
-                // Get columns
                 val pragmaCursor = db.rawQuery("PRAGMA table_info(`$tableName`)", null)
                 val columns = mutableListOf<ColumnInfo>()
                 var hasAppNameColumn = false
@@ -83,7 +78,6 @@ class DatabaseAnalyzer @Inject constructor(
                 }
                 pragmaCursor.close()
 
-                // Count rows
                 val countCursor = db.rawQuery("SELECT COUNT(*) FROM `$tableName`", null)
                 var rowCount = 0
                 if (countCursor.moveToFirst()) {
@@ -91,7 +85,6 @@ class DatabaseAnalyzer @Inject constructor(
                 }
                 countCursor.close()
 
-                // Sample data to detect patterns
                 if (rowCount > 0 && hasAppNameColumn) {
                     val nameCursor = db.rawQuery(
                         "SELECT app_name FROM `$tableName` LIMIT 1",
@@ -103,7 +96,6 @@ class DatabaseAnalyzer @Inject constructor(
                     nameCursor.close()
                 }
 
-                // Detect content types from first few rows
                 if (rowCount > 0) {
                     val sampleCursor = db.rawQuery(
                         "SELECT * FROM `$tableName` LIMIT 5",
@@ -126,13 +118,12 @@ class DatabaseAnalyzer @Inject constructor(
                     sampleCursor.close()
                 }
 
-                tables.add(TableInfo(tableNames.indexOf(tableName), columns, rowCount))
+                tables.add(TableInfo(tableName, columns, rowCount))
             }
 
             db.close()
             tempFile.delete()
 
-            // Suggest template based on analysis
             val suggestedTemplate = when {
                 containsImages -> Template.ELEGANT_GALLERY
                 containsLongText -> Template.STORY_TELLER

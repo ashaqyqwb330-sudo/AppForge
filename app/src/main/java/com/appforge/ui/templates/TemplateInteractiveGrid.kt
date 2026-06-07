@@ -14,6 +14,7 @@ import androidx.compose.ui.unit.dp
 import com.appforge.domain.model.RowData
 import com.appforge.domain.model.TableInfo
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TemplateInteractiveGrid(
     tables: List<TableInfo>,

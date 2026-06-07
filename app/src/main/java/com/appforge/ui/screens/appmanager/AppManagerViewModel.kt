@@ -1,11 +1,13 @@
 package com.appforge.ui.screens.appmanager
 
+import android.app.Application
 import android.net.Uri
-import androidx.lifecycle.ViewModel
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.appforge.data.preferences.PreferencesManager
 import com.appforge.data.repository.AppRepository
 import com.appforge.data.repository.DatabaseAnalyzer
+import com.appforge.data.repository.DatabaseFileManager
 import com.appforge.domain.model.AppInstance
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
@@ -25,10 +27,12 @@ data class AppManagerUiState(
 
 @HiltViewModel
 class AppManagerViewModel @Inject constructor(
+    application: Application,
     private val repository: AppRepository,
     private val analyzer: DatabaseAnalyzer,
+    private val fileManager: DatabaseFileManager,
     private val preferencesManager: PreferencesManager
-) : ViewModel() {
+) : AndroidViewModel(application) {
 
     private val _uiState = MutableStateFlow(AppManagerUiState())
     val uiState: StateFlow<AppManagerUiState> = _uiState.asStateFlow()
@@ -87,13 +91,13 @@ class AppManagerViewModel @Inject constructor(
             try {
                 _uiState.update { it.copy(isLoading = true) }
 
-                // Copy DB file to app's private storage for persistence
-                val context = androidx.compose.ui.platform.LocalContext.current // Not accessible here, will fix in screen
-                // Will be handled in the screen composable
+                val fileName = "${name}_${System.currentTimeMillis()}.db"
+                val copyResult = fileManager.copyDbToInternal(dbUri, fileName)
+                val internalPath = copyResult.getOrThrow()
 
                 val instance = AppInstance(
                     name = name,
-                    dbFilePath = dbUri.toString(),
+                    dbFilePath = internalPath,
                     templateId = analysis.suggestedTemplate.id,
                     iconUri = iconUri?.toString()
                 )

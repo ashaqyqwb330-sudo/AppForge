@@ -16,6 +16,7 @@ import androidx.compose.ui.unit.dp
 import com.appforge.domain.model.RowData
 import com.appforge.domain.model.TableInfo
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TemplateTableOrganizer(
     tables: List<TableInfo>,
@@ -26,7 +27,6 @@ fun TemplateTableOrganizer(
     val tabs = tables.map { it.name }
 
     Column {
-        // Table tabs
         ScrollableTabRow(selectedTabIndex = selectedTableIndex) {
             tabs.forEachIndexed { index, title ->
                 Tab(
@@ -37,7 +37,6 @@ fun TemplateTableOrganizer(
             }
         }
 
-        // Selected table content
         if (tables.isNotEmpty()) {
             val selectedTable = tables[selectedTableIndex]
             val rows = tableData[selectedTable.name] ?: emptyList()
@@ -49,7 +48,6 @@ fun TemplateTableOrganizer(
                 elevation = CardDefaults.cardElevation(4.dp)
             ) {
                 Column {
-                    // Header
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -66,11 +64,9 @@ fun TemplateTableOrganizer(
                         }
                     }
 
-                    // Data table (horizontally scrollable)
                     if (rows.isNotEmpty()) {
                         Box(modifier = Modifier.horizontalScroll(rememberScrollState())) {
                             Column {
-                                // Table header
                                 Row(modifier = Modifier.padding(horizontal = 8.dp)) {
                                     selectedTable.columns.forEach { col ->
                                         Text(
@@ -84,7 +80,6 @@ fun TemplateTableOrganizer(
                                     }
                                 }
                                 Divider()
-                                // Rows (show first 5)
                                 rows.take(5).forEach { row ->
                                     Row(modifier = Modifier.padding(horizontal = 8.dp)) {
                                         selectedTable.columns.forEach { col ->
@@ -114,7 +109,6 @@ fun TemplateTableOrganizer(
                 }
             }
 
-            // Summary cards for other tables
             LazyColumn(
                 contentPadding = PaddingValues(horizontal = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)

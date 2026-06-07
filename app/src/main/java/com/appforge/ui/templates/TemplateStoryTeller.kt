@@ -14,6 +14,7 @@ import androidx.compose.ui.unit.dp
 import com.appforge.domain.model.RowData
 import com.appforge.domain.model.TableInfo
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TemplateStoryTeller(
     tables: List<TableInfo>,
@@ -26,9 +27,7 @@ fun TemplateStoryTeller(
     ) {
         itemsIndexed(tables) { index, table ->
             val rows = tableData[table.name] ?: emptyList()
-            // Timeline style
             Row(modifier = Modifier.fillMaxWidth()) {
-                // Timeline indicator
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     modifier = Modifier.width(40.dp)
@@ -49,7 +48,6 @@ fun TemplateStoryTeller(
                     }
                 }
                 Spacer(Modifier.width(12.dp))
-                // Content card
                 Card(
                     modifier = Modifier.weight(1f),
                     onClick = { onTableClick(table.name) },
@@ -67,7 +65,6 @@ fun TemplateStoryTeller(
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
-                        // Show snippet of first row if contains long text
                         if (rows.isNotEmpty()) {
                             val textColumns = table.columns.filter { it.type.uppercase() == "TEXT" }
                             if (textColumns.isNotEmpty()) {

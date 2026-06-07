@@ -2,14 +2,12 @@ package com.appforge.ui.components
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.text.ClickableText
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.AnnotatedString
@@ -37,7 +35,6 @@ fun SmartCell(
     }
 
     when {
-        // URL detection
         value.matches(Regex("^(https?|ftp)://[^\\s/$.?#].[^\\s]*$")) -> {
             val uriHandler = LocalUriHandler.current
             TextButton(
@@ -49,7 +46,6 @@ fun SmartCell(
                 Text("فتح الرابط", maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }
-        // Email detection
         value.matches(Regex("[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}")) -> {
             val uriHandler = LocalUriHandler.current
             TextButton(
@@ -61,7 +57,6 @@ fun SmartCell(
                 Text(value, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }
-        // Phone number detection (simple)
         value.matches(Regex("\\+?[0-9\\-\\s]{7,}")) -> {
             val uriHandler = LocalUriHandler.current
             TextButton(
@@ -73,14 +68,15 @@ fun SmartCell(
                 Text(value, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }
-        // Date detection (ISO, yyyy-MM-dd)
         value.matches(Regex("\\d{4}-\\d{2}-\\d{2}")) -> {
             var formattedDate = value
             try {
                 val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.US)
                 val date = sdf.parse(value)
-                val outputFormat = SimpleDateFormat("dd MMM yyyy", Locale("ar"))
-                formattedDate = outputFormat.format(date!!)
+                if (date != null) {
+                    val outputFormat = SimpleDateFormat("dd MMM yyyy", Locale("ar"))
+                    formattedDate = outputFormat.format(date)
+                }
             } catch (_: Exception) {}
             Row(verticalAlignment = Alignment.CenterVertically, modifier = modifier) {
                 Icon(Icons.Default.DateRange, contentDescription = null, modifier = Modifier.size(16.dp))
@@ -88,7 +84,6 @@ fun SmartCell(
                 Text(formattedDate)
             }
         }
-        // Long text
         value.length > 100 -> {
             var expanded by remember { mutableStateOf(false) }
             Column(modifier = modifier.clickable { expanded = !expanded }) {
@@ -103,7 +98,6 @@ fun SmartCell(
                 }
             }
         }
-        // Default text
         else -> {
             Row(verticalAlignment = Alignment.CenterVertically, modifier = modifier) {
                 Text(

@@ -17,7 +17,7 @@ import coil.compose.AsyncImage
 import com.appforge.domain.model.RowData
 import com.appforge.domain.model.TableInfo
 
-@OptIn(ExperimentalFoundationApi::class)
+@OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun TemplateElegantGallery(
     tables: List<TableInfo>,
@@ -27,7 +27,6 @@ fun TemplateElegantGallery(
     val pagerState = rememberPagerState(pageCount = { tables.size })
 
     Column {
-        // Horizontal image carousel for tables that have image columns
         HorizontalPager(
             state = pagerState,
             modifier = Modifier
@@ -43,7 +42,6 @@ fun TemplateElegantGallery(
                 elevation = CardDefaults.cardElevation(8.dp)
             ) {
                 Box(modifier = Modifier.fillMaxSize()) {
-                    // Try to find an image column to display
                     val imageColumn = table.columns.find { it.type.uppercase().contains("BLOB") }
                     if (imageColumn != null && tableData[table.name]?.isNotEmpty() == true) {
                         val firstRow = tableData[table.name]!!.first()
@@ -57,7 +55,6 @@ fun TemplateElegantGallery(
                             )
                         }
                     }
-                    // Overlay text
                     Column(
                         modifier = Modifier
                             .align(Alignment.BottomStart)
@@ -79,7 +76,6 @@ fun TemplateElegantGallery(
             }
         }
 
-        // Table list
         LazyColumn(
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
