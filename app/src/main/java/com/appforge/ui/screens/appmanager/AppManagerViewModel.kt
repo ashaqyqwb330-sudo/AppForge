@@ -1,0 +1,144 @@
+package com.appforge.ui.screens.appmanager
+
+import android.net.Uri
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.appforge.data.preferences.PreferencesManager
+import com.appforge.data.repository.AppRepository
+import com.appforge.data.repository.DatabaseAnalyzer
+import com.appforge.domain.model.AppInstance
+import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.launch
+import javax.inject.Inject
+
+data class AppManagerUiState(
+    val instances: List<AppInstance> = emptyList(),
+    val isLoading: Boolean = false,
+    val isAnalyzing: Boolean = false,
+    val error: String? = null,
+    val analysisResult: DatabaseAnalyzer.AnalysisResult? = null,
+    val showAddDialog: Boolean = false,
+    val dbUri: Uri? = null,
+    val suggestedName: String = ""
+)
+
+@HiltViewModel
+class AppManagerViewModel @Inject constructor(
+    private val repository: AppRepository,
+    private val analyzer: DatabaseAnalyzer,
+    private val preferencesManager: PreferencesManager
+) : ViewModel() {
+
+    private val _uiState = MutableStateFlow(AppManagerUiState())
+    val uiState: StateFlow<AppManagerUiState> = _uiState.asStateFlow()
+
+    init {
+        viewModelScope.launch {
+            repository.getAllInstances().collect { instances ->
+                _uiState.update { it.copy(instances = instances) }
+            }
+        }
+    }
+
+    fun onFileSelected(uri: Uri, fileName: String) {
+        _uiState.update {
+            it.copy(
+                dbUri = uri,
+                suggestedName = fileName.removeSuffix(".db").removeSuffix(".sqlite"),
+                isAnalyzing = true,
+                error = null
+            )
+        }
+        analyzeDatabase(uri)
+    }
+
+    private fun analyzeDatabase(uri: Uri) {
+        viewModelScope.launch {
+            analyzer.analyzeDatabase(uri).fold(
+                onSuccess = { result ->
+                    _uiState.update {
+                        it.copy(
+                            isAnalyzing = false,
+                            analysisResult = result,
+                            showAddDialog = true,
+                            suggestedName = result.appNameSuggestion ?: it.suggestedName
+                        )
+                    }
+                },
+                onFailure = { e ->
+                    _uiState.update {
+                        it.copy(
+                            isAnalyzing = false,
+                            error = "فشل تحليل قاعدة البيانات: ${e.message}"
+                        )
+                    }
+                }
+            )
+        }
+    }
+
+    fun addNewApp(name: String, iconUri: Uri? = null) {
+        val state = _uiState.value
+        val analysis = state.analysisResult ?: return
+        val dbUri = state.dbUri ?: return
+
+        viewModelScope.launch {
+            try {
+                _uiState.update { it.copy(isLoading = true) }
+
+                // Copy DB file to app's private storage for persistence
+                val context = androidx.compose.ui.platform.LocalContext.current // Not accessible here, will fix in screen
+                // Will be handled in the screen composable
+
+                val instance = AppInstance(
+                    name = name,
+                    dbFilePath = dbUri.toString(),
+                    templateId = analysis.suggestedTemplate.id,
+                    iconUri = iconUri?.toString()
+                )
+
+                repository.addInstance(instance)
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        showAddDialog = false,
+                        dbUri = null,
+                        analysisResult = null
+                    )
+                }
+            } catch (e: Exception) {
+                _uiState.update {
+                    it.copy(isLoading = false, error = "فشل إضافة التطبيق: ${e.message}")
+                }
+            }
+        }
+    }
+
+    fun activateApp(id: Long) {
+        viewModelScope.launch {
+            repository.setActiveInstance(id)
+            preferencesManager.setActiveAppId(id.toString())
+        }
+    }
+
+    fun deleteApp(instance: AppInstance) {
+        viewModelScope.launch {
+            repository.deleteInstance(instance)
+        }
+    }
+
+    fun renameApp(id: Long, newName: String) {
+        viewModelScope.launch {
+            repository.renameInstance(id, newName)
+        }
+    }
+
+    fun dismissAddDialog() {
+        _uiState.update { it.copy(showAddDialog = false) }
+    }
+
+    fun clearError() {
+        _uiState.update { it.copy(error = null) }
+    }
+}

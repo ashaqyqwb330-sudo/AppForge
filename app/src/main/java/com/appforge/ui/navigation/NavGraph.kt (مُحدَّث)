@@ -1,0 +1,75 @@
+package com.appforge.ui.navigation
+
+import androidx.compose.runtime.Composable
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.navigation.NavHostController
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
+import com.appforge.ui.screens.about.AboutScreen
+import com.appforge.ui.screens.activeapp.ActiveAppHost
+import com.appforge.ui.screens.activeapp.ActiveAppViewModel
+import com.appforge.ui.screens.appmanager.AppManagerScreen
+import com.appforge.ui.screens.appmanager.AppManagerViewModel
+import com.appforge.ui.screens.settings.SettingsScreen
+import com.appforge.ui.screens.splash.SplashScreen
+
+@Composable
+fun NavGraph(navController: NavHostController = rememberNavController()) {
+    NavHost(
+        navController = navController,
+        startDestination = Routes.Splash.route
+    ) {
+        composable(Routes.Splash.route) {
+            SplashScreen(
+                onSplashFinished = {
+                    navController.navigate(Routes.AppManager.route) {
+                        popUpTo(Routes.Splash.route) { inclusive = true }
+                    }
+                }
+            )
+        }
+
+        composable(Routes.AppManager.route) {
+            val viewModel: AppManagerViewModel = hiltViewModel()
+            AppManagerScreen(
+                viewModel = viewModel,
+                onAppActivated = {
+                    navController.navigate(Routes.ActiveApp.route) {
+                        popUpTo(Routes.AppManager.route)
+                    }
+                },
+                onNavigateToSettings = {
+                    navController.navigate(Routes.Settings.route)
+                },
+                onNavigateToAbout = {
+                    navController.navigate(Routes.About.route)
+                }
+            )
+        }
+
+        composable(Routes.ActiveApp.route) {
+            val viewModel: ActiveAppViewModel = hiltViewModel()
+            ActiveAppHost(
+                viewModel = viewModel,
+                onBackToManager = {
+                    navController.navigate(Routes.AppManager.route) {
+                        popUpTo(Routes.ActiveApp.route) { inclusive = true }
+                    }
+                }
+            )
+        }
+
+        composable(Routes.Settings.route) {
+            SettingsScreen(
+                onBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(Routes.About.route) {
+            AboutScreen(
+                onBack = { navController.popBackStack() }
+            )
+        }
+    }
+}

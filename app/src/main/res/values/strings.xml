@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">AppForge</string>
+    <string name="app_description">صانع تطبيقات ذكي من قواعد بيانات SQLite</string>
+</resources>
