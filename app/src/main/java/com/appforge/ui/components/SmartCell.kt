@@ -10,7 +10,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalUriHandler
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
@@ -69,19 +68,21 @@ fun SmartCell(
             }
         }
         value.matches(Regex("\\d{4}-\\d{2}-\\d{2}")) -> {
-            var formattedDate = value
+            var displayText = value
             try {
                 val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.US)
                 val date = sdf.parse(value)
                 if (date != null) {
                     val outputFormat = SimpleDateFormat("dd MMM yyyy", Locale("ar"))
-                    formattedDate = outputFormat.format(date) ?: value
+                    val formatted = outputFormat.format(date)
+                    // formatted is String! (platform type) - ensure non-null
+                    displayText = formatted ?: value
                 }
             } catch (_: Exception) {}
             Row(verticalAlignment = Alignment.CenterVertically, modifier = modifier) {
                 Icon(Icons.Default.DateRange, contentDescription = null, modifier = Modifier.size(16.dp))
                 Spacer(Modifier.width(4.dp))
-                Text(formattedDate)
+                Text(displayText ?: value)
             }
         }
         value.length > 100 -> {
