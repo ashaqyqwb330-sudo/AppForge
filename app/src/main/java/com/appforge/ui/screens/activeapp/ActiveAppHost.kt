@@ -5,6 +5,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.appforge.domain.model.Template
@@ -14,7 +15,8 @@ import com.appforge.ui.templates.*
 @Composable
 fun ActiveAppHost(
     viewModel: ActiveAppViewModel,
-    onBackToManager: () -> Unit
+    onBackToManager: () -> Unit,
+    onTableClick: (String) -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
@@ -47,12 +49,12 @@ fun ActiveAppHost(
         Box(modifier = Modifier.padding(padding)) {
             when {
                 uiState.isLoading -> {
-                    CircularProgressIndicator(modifier = Modifier.padding(16.dp))
+                    LinearProgressIndicator(modifier = Modifier.align(Alignment.Center))
                 }
                 uiState.error != null -> {
                     Column(
-                        modifier = Modifier.padding(16.dp),
-                        horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally
+                        modifier = Modifier.align(Alignment.Center),
+                        horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Text(uiState.error!!)
                         Spacer(Modifier.height(8.dp))
@@ -67,22 +69,22 @@ fun ActiveAppHost(
                         Template.ELEGANT_GALLERY -> TemplateElegantGallery(
                             tables = uiState.tables,
                             tableData = uiState.tableData,
-                            onTableClick = { /* navigate to table detail */ }
+                            onTableClick = onTableClick
                         )
                         Template.TABLE_ORGANIZER -> TemplateTableOrganizer(
                             tables = uiState.tables,
                             tableData = uiState.tableData,
-                            onTableClick = { }
+                            onTableClick = onTableClick
                         )
                         Template.STORY_TELLER -> TemplateStoryTeller(
                             tables = uiState.tables,
                             tableData = uiState.tableData,
-                            onTableClick = { }
+                            onTableClick = onTableClick
                         )
                         Template.INTERACTIVE_GRID -> TemplateInteractiveGrid(
                             tables = uiState.tables,
                             tableData = uiState.tableData,
-                            onTableClick = { }
+                            onTableClick = onTableClick
                         )
                     }
                 }

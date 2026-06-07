@@ -8,11 +8,15 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import com.appforge.ui.screens.splash.SplashScreen
+import com.appforge.ui.screens.about.AboutScreen
+import com.appforge.ui.screens.activeapp.ActiveAppHost
+import com.appforge.ui.screens.activeapp.ActiveAppViewModel
 import com.appforge.ui.screens.appmanager.AppManagerScreen
 import com.appforge.ui.screens.appmanager.AppManagerViewModel
 import com.appforge.ui.screens.settings.SettingsScreen
-import com.appforge.ui.screens.about.AboutScreen
+import com.appforge.ui.screens.splash.SplashScreen
+import com.appforge.ui.screens.tabledetail.TableDetailScreen
+import com.appforge.ui.screens.tabledetail.TableDetailViewModel
 
 @Composable
 fun NavGraph(navController: NavHostController = rememberNavController()) {
@@ -49,14 +53,29 @@ fun NavGraph(navController: NavHostController = rememberNavController()) {
         }
 
         composable(Routes.ActiveApp.route) {
-            // This will be replaced with the active app's UI
-            // For now, placeholder that shows dashboard of active app
+            val viewModel: ActiveAppViewModel = hiltViewModel()
             ActiveAppHost(
+                viewModel = viewModel,
                 onBackToManager = {
                     navController.navigate(Routes.AppManager.route) {
                         popUpTo(Routes.ActiveApp.route) { inclusive = true }
                     }
+                },
+                onTableClick = { tableName ->
+                    navController.navigate(Routes.TableView.createRoute(tableName))
                 }
+            )
+        }
+
+        composable(
+            route = Routes.TableView.route,
+            arguments = listOf(navArgument("tableName") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val tableName = backStackEntry.arguments?.getString("tableName") ?: ""
+            val viewModel: TableDetailViewModel = hiltViewModel()
+            TableDetailScreen(
+                viewModel = viewModel,
+                onBack = { navController.popBackStack() }
             )
         }
 
@@ -72,10 +91,4 @@ fun NavGraph(navController: NavHostController = rememberNavController()) {
             )
         }
     }
-}
-
-@Composable
-fun ActiveAppHost(onBackToManager: () -> Unit) {
-    // Placeholder – will be filled with template-based navigation in Part 2
-    androidx.compose.material3.Text("Active App")
 }
